@@ -81,6 +81,7 @@ class BinLogServerInfo
         }
 
         $serverInfo['version_name'] = self::parseVersion($serverInfo['server_version']);
+        $serverInfo['version_revision'] = self::parseRevision($serverInfo['server_version']);
 
         return new self($serverInfo);
     }
@@ -117,11 +118,6 @@ class BinLogServerInfo
         return $this->serverInfo['version_revision'];
     }
 
-    public function setRevision($version): void
-    {
-        $this->serverInfo['version_revision'] = $this->parseRevision($version);
-    }
-
     public function getVersion(): string
     {
         return $this->serverInfo['version_name'];
@@ -144,6 +140,10 @@ class BinLogServerInfo
 
     private static function parseRevision(string $version): float
     {
+        //https://mariadb.com/kb/en/connection/#initial-handshake-packet
+        if (substr($version, 0,9) == '5.5.5-10.') {
+            $version = substr($version, 6);
+        }
         return (float)$version;
     }
 }

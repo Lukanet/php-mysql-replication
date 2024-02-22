@@ -69,7 +69,6 @@ class BinLogSocketConnect
             $this->getResponse(false)
         );
         $this->authenticate();
-        $this->binLogServerInfo->setRevision($this->getVersion());
         $this->getBinlogStream();
     }
 
@@ -207,20 +206,6 @@ class BinLogSocketConnect
         $res = $this->select('SHOW GLOBAL VARIABLES LIKE "BINLOG_CHECKSUM"');
 
         return isset($res[0]) && isset($res[0]['Value']) && $res[0]['Value'] !== 'NONE';
-    }
-
-    public function getVersion(): string
-    {
-        $this->execute('USE INFORMATION_SCHEMA');
-        $r = '';
-        $versions = $this->select('SHOW VARIABLES LIKE "version%"');
-        if (is_array($versions) && 0 !== count($versions)) {
-            foreach ($versions as $version) {
-                $r .= $version['Value'];
-            }
-        }
-
-        return $r;
     }
 
     /**
