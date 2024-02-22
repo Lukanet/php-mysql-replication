@@ -94,7 +94,6 @@ class MySQLReplicationFactory
 
         $this->binLogServerConnect = new BinLogSocketConnect(
             $config,
-            $repository,
             $socket
         );
 

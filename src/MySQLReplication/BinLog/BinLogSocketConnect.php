@@ -7,7 +7,6 @@ use MySQLReplication\BinaryDataReader\BinaryDataReader;
 use MySQLReplication\Config\Config;
 use MySQLReplication\Gtid\GtidCollection;
 use MySQLReplication\Gtid\GtidException;
-use MySQLReplication\Repository\RepositoryInterface;
 use MySQLReplication\Socket\SocketException;
 use MySQLReplication\Socket\SocketInterface;
 use MySQLReplication\Exception\MySQLReplicationException;
@@ -28,7 +27,6 @@ class BinLogSocketConnect
     private $binaryDataMaxLength = 16777215;
     private $checkSum = false;
 
-    private $repository;
     private $socket;
     private $binLogCurrent;
 
@@ -48,11 +46,9 @@ class BinLogSocketConnect
      */
     public function __construct(
         Config $config,
-        RepositoryInterface $repository,
         SocketInterface $socket
     ) {
         $this->config = $config;
-        $this->repository = $repository;
         $this->socket = $socket;
         $this->binLogCurrent = new BinLogCurrent();
     }
