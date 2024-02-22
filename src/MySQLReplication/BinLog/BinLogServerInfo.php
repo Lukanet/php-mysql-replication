@@ -123,6 +123,16 @@ class BinLogServerInfo
         return $this->serverInfo['version_name'];
     }
 
+    public function getServerId(): int
+    {
+        return $this->serverInfo['server_id'];
+    }
+
+    public function setServerId($server_id): void
+    {
+        $this->serverInfo['server_id'] = (int) $server_id;
+    }
+
     public function isMariaDb(): bool
     {
         return self::MYSQL_VERSION_MARIADB === $this->getVersion();

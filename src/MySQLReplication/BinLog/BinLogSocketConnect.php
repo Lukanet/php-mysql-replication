@@ -184,6 +184,9 @@ class BinLogSocketConnect
             $this->execute('SET @master_heartbeat_period = ' . $this->config->getHeartbeatPeriod() * 1000000000);
         }
 
+        $res = $this->select('SELECT @@GLOBAL.server_id');
+        $this->getBinLogServerInfo()->setServerId($res[0]['@@GLOBAL.server_id']);
+
         $this->registerSlave();
 
         if ('' !== $this->config->getMariaDbGtid()) {
