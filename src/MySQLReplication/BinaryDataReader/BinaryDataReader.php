@@ -95,6 +95,15 @@ class BinaryDataReader
         throw new BinaryDataReaderException('Column num ' . $c . ' not handled');
     }
 
+    public function readCodedString(): ?string
+    {
+        $l = $this->readCodedBinary();
+        if (is_null($l)) {
+            return null;
+        }
+        return $this->read($l);
+    }
+
     public function readUInt16(): int
     {
         return unpack('v', $this->read(self::UNSIGNED_SHORT_LENGTH))[1];
