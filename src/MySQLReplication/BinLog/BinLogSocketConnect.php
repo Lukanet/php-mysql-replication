@@ -10,6 +10,7 @@ use MySQLReplication\Gtid\GtidException;
 use MySQLReplication\Repository\RepositoryInterface;
 use MySQLReplication\Socket\SocketException;
 use MySQLReplication\Socket\SocketInterface;
+use MySQLReplication\Exception\MySQLReplicationException;
 
 class BinLogSocketConnect
 {
@@ -20,7 +21,9 @@ class BinLogSocketConnect
     /**
      * http://dev.mysql.com/doc/internals/en/auth-phase-fast-path.html 00 FE
      */
-    private $packageOkHeader = [0, 254];
+    private $packageOkHeader = 0x0;
+    private $packageEofHeader = 0xfe;
+    private $packageErrHeader = 0xff;
     private $binaryDataMaxLength = 16777215;
     private $checkSum = false;
 
@@ -113,7 +116,7 @@ class BinLogSocketConnect
     private function isWriteSuccessful(string $data): void
     {
         $head = ord($data[0]);
-        if (! in_array($head, $this->packageOkHeader, true)) {
+        if ($head === $this->packageErrHeader) {
             $errorCode = unpack('v', $data[1] . $data[2])[1];
             $errorMessage = '';
             $packetLength = strlen($data);
@@ -205,6 +208,62 @@ class BinLogSocketConnect
     {
         $this->socket->writeToSocket(pack('LC', strlen($sql) + 1, 0x03) . $sql);
         $this->getResponse();
+    }
+
+    /**
+     * @throws BinLogException
+     * @throws SocketException
+     */
+    private function select(string $sql): array
+    {
+        $this->socket->writeToSocket(pack('LC', strlen($sql) + 1, 0x03) . $sql);
+        $binaryDataReader = new BinaryDataReader($this->getResponse());
+
+        $columns_length = $binaryDataReader->readCodedBinary();
+        $columns = [];
+
+        for ($i=0; $i < $columns_length; $i++) {
+            $column_data = new BinaryDataReader($this->getResponse());
+
+            $columns[$i] = [];
+            $columns[$i]['catalog'] = $column_data->readCodedString();
+            $columns[$i]['schema'] = $column_data->readCodedString();
+            $columns[$i]['table alias'] = $column_data->readCodedString();
+            $columns[$i]['table'] = $column_data->readCodedString();
+            $columns[$i]['column alias'] = $column_data->readCodedString();
+            $columns[$i]['column'] = $column_data->readCodedString();
+            /* MARIADB_CLIENT_EXTENDED_TYPE_INFO
+            $columns[$i][' extended_type'] = $column_data->readCodedString(); */
+            if ($column_data->readCodedBinary() != 0xC) {
+                throw new BinLogException('Unexpected length of fixed fields in select');
+            }
+            $columns[$i]['character set number'] = $column_data->readUIntBySize(2);
+            $columns[$i]['max. column size'] = $column_data->readUIntBySize(4);
+            $columns[$i]['Field types'] = $column_data->readUIntBySize(1);
+            $columns[$i]['Field detail flag'] = $column_data->readUIntBySize(2);
+            $columns[$i]['decimals'] = $column_data->readUIntBySize(1);
+            $column_data->readUIntBySize(2); // unused
+        }
+        // Eof_Packet
+        if (ord($this->getResponse()[0]) !== $this->packageEofHeader) {
+            throw new BinLogException('Unexpected packet after Column Definition packet');
+        }
+        $result = [];
+
+        $n = 0;
+        while ($data = $this->getResponse()) {
+            if (ord($data[0]) === $this->packageEofHeader) {
+                break;
+            }
+            $result[$n] = [];
+            $row = new BinaryDataReader($data);
+            foreach ($columns as $column) {
+                $result[$n][$column['column alias']] = $row->readCodedString();
+            }
+            $n++;
+        }
+
+        return $result;
     }
 
     /**
