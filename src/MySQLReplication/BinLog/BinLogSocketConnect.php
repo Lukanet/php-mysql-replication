@@ -11,6 +11,7 @@ use MySQLReplication\Repository\RepositoryInterface;
 use MySQLReplication\Socket\SocketException;
 use MySQLReplication\Socket\SocketInterface;
 use MySQLReplication\Exception\MySQLReplicationException;
+use MySQLReplication\Repository\MasterStatusDTO;
 
 class BinLogSocketConnect
 {
@@ -65,10 +66,10 @@ class BinLogSocketConnect
     {
         $this->socket->connectToStream($this->config->getHost(), $this->config->getPort());
         $this->binLogServerInfo = BinLogServerInfo::parsePackage(
-            $this->getResponse(false),
-            $this->repository->getVersion()
+            $this->getResponse(false)
         );
         $this->authenticate();
+        $this->binLogServerInfo->setRevision($this->getVersion());
         $this->getBinlogStream();
     }
 
@@ -178,7 +179,7 @@ class BinLogSocketConnect
      */
     private function getBinlogStream(): void
     {
-        $this->checkSum = $this->repository->isCheckSum();
+        $this->checkSum = $this->isCheckSum();
         if ($this->checkSum) {
             $this->execute('SET @master_binlog_checksum = @@global.binlog_checksum');
         }
@@ -198,6 +199,28 @@ class BinLogSocketConnect
         } else {
             $this->setBinLogDump();
         }
+    }
+
+    public function isCheckSum(): bool
+    {
+        $this->execute('USE INFORMATION_SCHEMA');
+        $res = $this->select('SHOW GLOBAL VARIABLES LIKE "BINLOG_CHECKSUM"');
+
+        return isset($res[0]) && isset($res[0]['Value']) && $res[0]['Value'] !== 'NONE';
+    }
+
+    public function getVersion(): string
+    {
+        $this->execute('USE INFORMATION_SCHEMA');
+        $r = '';
+        $versions = $this->select('SHOW VARIABLES LIKE "version%"');
+        if (is_array($versions) && 0 !== count($versions)) {
+            foreach ($versions as $version) {
+                $r .= $version['Value'];
+            }
+        }
+
+        return $r;
     }
 
     /**
@@ -337,6 +360,24 @@ class BinLogSocketConnect
     }
 
     /**
+     * @inheritDoc
+     * @throws Exception
+     * @throws BinLogException
+     */
+    public function getMasterStatus(): MasterStatusDTO
+    {
+        $data = $this->select('SHOW MASTER STATUS');
+        if (empty($data)) {
+            throw new BinLogException(
+                MySQLReplicationException::BINLOG_NOT_ENABLED,
+                MySQLReplicationException::BINLOG_NOT_ENABLED_CODE
+            );
+        }
+
+        return MasterStatusDTO::makeFromArray($data[0]);
+    }
+
+    /**
      * @see https://dev.mysql.com/doc/internals/en/com-binlog-dump.html
      * @throws BinLogException
      * @throws SocketException
@@ -347,7 +388,7 @@ class BinLogSocketConnect
         $binFilePos = $binLogCurrent->getBinLogPosition() ?: $this->config->getBinLogPosition();
         $binFileName = $binLogCurrent->getBinFileName() ?: $this->config->getBinLogFileName();
         if (0 === $binFilePos && '' === $binFileName) {
-            $masterStatusDTO = $this->repository->getMasterStatus();
+            $masterStatusDTO = $this->getMasterStatus();
             $binFilePos = $masterStatusDTO->getPosition();
             $binFileName = $masterStatusDTO->getFile();
         }

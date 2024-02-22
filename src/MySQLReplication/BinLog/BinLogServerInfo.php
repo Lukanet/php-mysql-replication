@@ -13,7 +13,7 @@ class BinLogServerInfo
      */
     private $serverInfo;
 
-    public static function parsePackage(string $data, string $version): BinLogServerInfo
+    public static function parsePackage(string $data): BinLogServerInfo
     {
         $i = 0;
         $length = strlen($data);
@@ -80,8 +80,7 @@ class BinLogServerInfo
             $serverInfo['auth_plugin_name'] .= $data[$j];
         }
 
-        $serverInfo['version_name'] = self::parseVersion($version);
-        $serverInfo['version_revision'] = self::parseRevision($version);
+        $serverInfo['version_name'] = self::parseVersion($serverInfo['server_version']);
 
         return new self($serverInfo);
     }
@@ -116,6 +115,11 @@ class BinLogServerInfo
     public function getRevision(): float
     {
         return $this->serverInfo['version_revision'];
+    }
+
+    public function setRevision($version): void
+    {
+        $this->serverInfo['version_revision'] = $this->parseRevision($version);
     }
 
     public function getVersion(): string
