@@ -80,7 +80,7 @@ class ColumnDTO
             } else {
                 $maxLength = ((($metadata >> 4) & 0x300) ^ 0x300) + ($metadata & 0x00ff);
             }
-        } elseif ($columnType === ConstFieldType::BLOB || $columnType === ConstFieldType::IGNORE) {
+        } elseif ($columnType === ConstFieldType::BLOB) {
             $lengthSize = $binaryDataReader->readUInt8();
         } elseif ($columnType === ConstFieldType::GEOMETRY) {
             $lengthSize = $binaryDataReader->readUInt8();

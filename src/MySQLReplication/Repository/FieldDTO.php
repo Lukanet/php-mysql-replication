@@ -32,11 +32,11 @@ class FieldDTO
     {
         return self::makeFromArray(
             [
-                'COLUMN_NAME' => 'DROPPED_COLUMN_' . $index,
+                'COLUMN_NAME' => '~DROPPED_COLUMN_' . $index,
                 'COLLATION_NAME' => null,
                 'CHARACTER_SET_NAME' => null,
                 'COLUMN_COMMENT' => '',
-                'COLUMN_TYPE' => 'BLOB',
+                'COLUMN_TYPE' => '',
                 'COLUMN_KEY' => ''
             ]
         );

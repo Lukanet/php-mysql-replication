@@ -347,19 +347,16 @@ class RowEvent extends EventCommon
         }
 
         $this->binaryDataReader->readCodedBinary();
-
         $fieldDTOCollection = $this->repository->getFields($data['schema_name'], $data['table_name']);
         $columnDTOCollection = new ColumnDTOCollection();
         // if you drop tables and parse of logs you will get empty scheme
         if (! $fieldDTOCollection->isEmpty()) {
             $columnLength = strlen($data['column_types']);
             for ($offset = 0; $offset < $columnLength; ++$offset) {
+                $type = ord($data['column_types'][$offset]);
                 // this a dirty hack to prevent row events containing columns which have been dropped
-                if ($fieldDTOCollection->offsetExists($offset)) {
-                    $type = ord($data['column_types'][$offset]);
-                } else {
+                if (!$fieldDTOCollection->offsetExists($offset)) {
                     $fieldDTOCollection->offsetSet($offset, FieldDTO::makeDummy($offset));
-                    $type = ConstFieldType::IGNORE;
                 }
 
                 /** @var FieldDTO $fieldDTO */
@@ -495,9 +492,6 @@ class RowEvent extends EventCommon
             }
 
             if ($this->checkNull($nullBitmap, $nullBitmapIndex)) {
-                $values[$name] = null;
-            } elseif ($type === ConstFieldType::IGNORE) {
-                $this->binaryDataReader->advance($columnDTO->getLengthSize());
                 $values[$name] = null;
             } elseif ($type === ConstFieldType::TINY) {
                 if ($columnDTO->isUnsigned()) {
