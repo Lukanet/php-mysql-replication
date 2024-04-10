@@ -39,6 +39,4 @@ class ConstFieldType
 
     public const CHAR = self::TINY;
     public const INTERVAL = self::ENUM;
-
-    public const IGNORE = 666;
 }
